@@ -450,7 +450,7 @@ if __name__ == "__main__":
     print('serializing features...')
     data = pickle.dumps(features, protocol=4)
     print('saving features...')
-    with open('/mnt/fishervector_features_64k.pickle', 'wb+') as f:
+    with open('fishervector_features.pickle', 'wb+') as f:
         f.write(data)
 
     print("Num Classes train {0}".format(len(list(set(list(y_train))))))
