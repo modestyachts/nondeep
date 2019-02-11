@@ -23,7 +23,7 @@ With 256 GMM centers an ImageNet trained model should get to 55% top-5 accuracy 
 
 To train + eval the model
 1. Generate features from stored S3 keys usinn PyWren 
-   `` python featurize_fisher_model.py --num_centers 256 ```
+   ``` python featurize_fisher_model.py --num_centers 256 ```
    (if it errors run the following command to *resume*)
    ```  python featurize_fisher_model.py --num_centers 256 --use_cache_gmm_sift --use_cache_gmm_lcs ```
  2. Train model using least squares (file fv_model contains the weights of the model)
