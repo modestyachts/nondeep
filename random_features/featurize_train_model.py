@@ -1,7 +1,7 @@
 import argparse
 import time
 
-import multiprocess as mp
+import multiprocessing as mp
 import numpy as np
 import scipy.linalg
 import torch
@@ -86,6 +86,26 @@ def train_ls_model(X_train, y_train, reg):
     XTX[idxs] -= reg
     return model
 
+def train_ls_model_unsupervised(X_train, y_train, reg, n_train=4096):
+    X_train = X_train.astype('float64')
+    y = np.eye(np.max(y_train) + 1)[y_train]
+
+
+    XTX = X_train.T.dot(X_train)
+    XTX /= X_train.shape[0]
+
+    X_train = X_train[:n_train]
+    y = y[:n_train]
+
+    XTy = X_train.T.dot(y)
+    XTy /= n_train
+
+    idxs = np.diag_indices(X_train.shape[1])
+    XTX[idxs] += reg
+    model = scipy.linalg.solve(XTX, XTy)
+    XTX[idxs] -= reg
+    return model
+
 def eval_ls_model(model, X, y):
     y_pred = X.dot(model)
     return np.sum(np.argmax(y_pred, axis=1) == y)/y.shape[0]
@@ -97,6 +117,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_filters', default=16, type=int)
     parser.add_argument('--dataset', help="cifar-10 or mnist (default cifar-10)", default='cifar-10')
     parser.add_argument('--patch_size', type=int, default=6)
+    parser.add_argument('--subset', type=int, default=50000)
     parser.add_argument('--pool_size', type=int, default=15)
     parser.add_argument('--pool_stride', type=int, default=6)
     parser.add_argument('--seed', type=int, default=0)
@@ -104,9 +125,19 @@ if __name__ == "__main__":
     parser.add_argument('--filter_scale', type=float, default=1e-3)
     parser.add_argument('--patch_distribution', type=str, default='empirical')
     parser.add_argument('--regularizer', type=float, default=1e-4)
+    parser.add_argument('--unsupervised', const=True, action="store_const")
     args = parser.parse_args()
     X_train_lift, X_test_lift, y_train, y_test, featurizer = featurize(args.dataset, args.patch_size, args.patch_distribution, args.num_filters, args.pool_size, args.pool_stride, args.bias, args.filter_scale, args.seed)
-    model = train_ls_model(X_train_lift, y_train, args.regularizer)
-    train_acc = eval_ls_model(model, X_train_lift, y_train)
-    test_acc = eval_ls_model(model, X_test_lift, y_test)
-    print(f"Train Accuracy: {train_acc}, Test Accuracy: {test_acc}")
+
+    X_train_lift = X_train_lift[:args.subset]
+    y_train = y_train[:args.subset]
+
+    for reg in [1,10,100,1000,10000]:
+        print("regularization: ", reg)
+        if args.unsupervised:
+            model = train_ls_model_unsupervised(X_train_lift, y_train, reg)
+        else:
+            model = train_ls_model(X_train_lift, y_train, reg)
+        train_acc = eval_ls_model(model, X_train_lift, y_train)
+        test_acc = eval_ls_model(model, X_test_lift, y_test)
+        print(f"Train Accuracy: {train_acc}, Test Accuracy: {test_acc}")

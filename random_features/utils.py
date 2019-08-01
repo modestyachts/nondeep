@@ -5,6 +5,7 @@ import io
 import boto3
 
 from numba import jit
+import skimage
 import numpy as np
 import scipy.misc
 import s3_utils
@@ -104,8 +105,6 @@ def __grab_patches(images, random_idxs, patch_size=6, tot_patches=1e6, seed=0, s
     for i, (im_idx, idx_x, idx_y) in enumerate(random_idxs):
         out_patch = patches[i, :, :, :]
         im = images[im_idx]
-        if (scale != 0):
-            im = skimage.filters.gaussian(im, sigma=scale)
         grab_patch_from_idx(im, idx_x, idx_y, patch_size, out_patch)
     return patches
 
