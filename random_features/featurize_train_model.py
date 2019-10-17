@@ -123,11 +123,12 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--bias', type=float, default=1.0)
     parser.add_argument('--filter_scale', type=float, default=1e-3)
+    parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--patch_distribution', type=str, default='empirical')
     parser.add_argument('--regularizer', type=float, default=1e-4)
     parser.add_argument('--unsupervised', const=True, action="store_const")
     args = parser.parse_args()
-    X_train_lift, X_test_lift, y_train, y_test, featurizer = featurize(args.dataset, args.patch_size, args.patch_distribution, args.num_filters, args.pool_size, args.pool_stride, args.bias, args.filter_scale, args.seed)
+    X_train_lift, X_test_lift, y_train, y_test, featurizer = featurize(args.dataset, args.patch_size, args.patch_distribution, args.num_filters, args.pool_size, args.pool_stride, args.bias, args.filter_scale, args.seed, data_batchsize=args.batch_size)
 
     X_train_lift = X_train_lift[:args.subset]
     y_train = y_train[:args.subset]
