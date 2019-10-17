@@ -1,6 +1,5 @@
 import argparse
 import time
-
 import multiprocessing as mp
 import numpy as np
 import scipy.linalg
@@ -41,13 +40,15 @@ def build_featurizer(patch_size, pool_size, pool_stride, bias, patch_distributio
     return net
 
 
-def featurize(dataset, patch_size, patch_distribution, num_filters, pool_size, pool_stride, bias, filter_scale, seed, data_batchsize=1024, filter_batch_size=1024):
+def featurize(dataset, patch_size, patch_distribution, num_filters, pool_size, pool_stride, bias, filter_scale, seed, data_batchsize=1024, filter_batch_size=1024, zca=False):
     data = utils.load_dataset(dataset)
     gpu = torch.cuda.is_available()
     num_channels = 3
     dtype = 'float32'
     X_train = data['X_train']
     X_test = data['X_test']
+    if zca:
+        X_train, X_test = utils.preprocess(X_train, X_test)
     y_train = data['y_train']
     y_test = data['y_test']
     if ("cifar" in dataset):
@@ -59,12 +60,13 @@ def featurize(dataset, patch_size, patch_distribution, num_filters, pool_size, p
     featurizer = build_featurizer(patch_size, pool_size, pool_stride, bias, patch_distribution,
                                   num_filters, num_channels, seed, filter_scale, X_train, filter_batch_size)
     start = time.time()
-    assert X_train.dtype == np.uint8
-    print("Scaling input by 255..")
-    X_train = X_train.astype(dtype)
-    X_test = X_test.astype(dtype)
-    X_train /= 255.0
-    X_test /= 255.0
+    if not zca:
+        assert X_train.dtype == np.uint8
+        print("Scaling input by 255..")
+        X_train = X_train.astype(dtype)
+        X_test = X_test.astype(dtype)
+        X_train /= 255.0
+        X_test /= 255.0
     X_train_lift = coatesng.coatesng_featurize(
         featurizer, X_train.astype(dtype), data_batchsize=data_batchsize, gpu=gpu)
     X_test_lift = coatesng.coatesng_featurize(
@@ -127,13 +129,15 @@ if __name__ == "__main__":
     parser.add_argument('--patch_distribution', type=str, default='empirical')
     parser.add_argument('--regularizer', type=float, default=1e-4)
     parser.add_argument('--unsupervised', const=True, action="store_const")
+    parser.add_argument('--zca', const=True, action="store_const")
     args = parser.parse_args()
-    X_train_lift, X_test_lift, y_train, y_test, featurizer = featurize(args.dataset, args.patch_size, args.patch_distribution, args.num_filters, args.pool_size, args.pool_stride, args.bias, args.filter_scale, args.seed, data_batchsize=args.batch_size)
+
+    X_train_lift, X_test_lift, y_train, y_test, featurizer = featurize(args.dataset, args.patch_size, args.patch_distribution, args.num_filters, args.pool_size, args.pool_stride, args.bias, args.filter_scale, args.seed, data_batch_size=args.batch_size, zca=args.zca)
 
     X_train_lift = X_train_lift[:args.subset]
     y_train = y_train[:args.subset]
 
-    for reg in [1,10,100,1000,10000]:
+    for reg in [1e-8, 1e-4, 1e-2,1,10,100,1000,10000]:
         print("regularization: ", reg)
         if args.unsupervised:
             model = train_ls_model_unsupervised(X_train_lift, y_train, reg)
