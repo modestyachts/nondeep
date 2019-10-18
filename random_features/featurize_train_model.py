@@ -88,24 +88,15 @@ def train_ls_model(X_train, y_train, reg):
     XTX[idxs] -= reg
     return model
 
-def train_ls_model_unsupervised(X_train, y_train, reg, n_train=4096):
+def train_ls_model_dual(X_train, y_train, reg):
     X_train = X_train.astype('float64')
     y = np.eye(np.max(y_train) + 1)[y_train]
-
-
-    XTX = X_train.T.dot(X_train)
-    XTX /= X_train.shape[0]
-
-    X_train = X_train[:n_train]
-    y = y[:n_train]
-
-    XTy = X_train.T.dot(y)
-    XTy /= n_train
-
-    idxs = np.diag_indices(X_train.shape[1])
-    XTX[idxs] += reg
-    model = scipy.linalg.solve(XTX, XTy)
-    XTX[idxs] -= reg
+    XXT = X_train.dot(X_train.T)
+    idxs = np.diag_indices(X_train.shape[0])
+    XXT[idxs] += reg
+    model = scipy.linalg.solve(XXT, y)
+    XXT[idxs] -= reg
+    model = X_train.T.dot(model)
     return model
 
 def eval_ls_model(model, X, y):
@@ -132,17 +123,17 @@ if __name__ == "__main__":
     parser.add_argument('--zca', const=True, action="store_const")
     args = parser.parse_args()
 
-    X_train_lift, X_test_lift, y_train, y_test, featurizer = featurize(args.dataset, args.patch_size, args.patch_distribution, args.num_filters, args.pool_size, args.pool_stride, args.bias, args.filter_scale, args.seed, data_batch_size=args.batch_size, zca=args.zca)
+    X_train_lift, X_test_lift, y_train, y_test, featurizer = featurize(args.dataset, args.patch_size, args.patch_distribution, args.num_filters, args.pool_size, args.pool_stride, args.bias, args.filter_scale, args.seed, data_batchsize=args.batch_size, zca=args.zca)
 
     X_train_lift = X_train_lift[:args.subset]
     y_train = y_train[:args.subset]
 
     for reg in [1e-8, 1e-4, 1e-2,1,10,100,1000,10000]:
         print("regularization: ", reg)
-        if args.unsupervised:
-            model = train_ls_model_unsupervised(X_train_lift, y_train, reg)
-        else:
+        if X_train_lift.shape[0] > X_train_lift.shape[1]:
             model = train_ls_model(X_train_lift, y_train, reg)
+        else:
+            model = train_ls_model_dual(X_train_lift, y_train, reg)
         train_acc = eval_ls_model(model, X_train_lift, y_train)
         test_acc = eval_ls_model(model, X_test_lift, y_test)
         print(f"Train Accuracy: {train_acc}, Test Accuracy: {test_acc}")
