@@ -21,8 +21,7 @@ import utils
 
 class IdentityNet(nn.Module):
     def __init__(self):
-        super().__init__()
-
+        super().__init__() 
     def forward(self, x):
         return x
 
@@ -51,9 +50,7 @@ class BasicCoatesNgNet(nn.Module):
         conv = self.conv(x)
         x_pos = F.avg_pool2d(F.relu(conv - self.bias), [self.pool_size, self.pool_size],
                              stride=[self.pool_stride, self.pool_stride], ceil_mode=True)
-        x_neg = F.avg_pool2d(F.relu((-1*conv) - self.bias), [self.pool_size, self.pool_size],
-                             stride=[self.pool_stride, self.pool_stride], ceil_mode=True)
-        return torch.cat((x_pos, x_neg), dim=1)
+        return x_pos
 
     def forward(self, x):
         num_filters = self.filters.shape[0]
@@ -84,7 +81,7 @@ class BasicCoatesNgNet(nn.Module):
         if (self.use_gpu):
             filter_set = filter_set.cuda()
         conv = nn.Conv2d(self.in_channels, end - start,
-                         self.patch_size, bias=False)
+                         self.patch_size, bias=False, padding=1)
         #print("rebounding nn.Parameter this shouldn't happen that often")
         conv.weight = nn.Parameter(filter_set)
         self.conv = conv
@@ -153,6 +150,7 @@ def coatesng_featurize(net, X, data_batchsize=128, num_filters=None, filter_batc
         X_lift_full.append(np.concatenate(X_lift_batch, axis=0))
     conv_features = np.concatenate(X_lift_full, axis=1)
     net.deactivate()
+    #return conv_features
     return conv_features.reshape(X.shape[0], -1)
 
 

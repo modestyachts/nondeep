@@ -17,8 +17,14 @@ def build_featurizer(patch_size, pool_size, pool_stride, bias, patch_distributio
         assert X_train is not None, "X_train must be provided when patch distribution == empirical"
         all_patches, idxs = utils.grab_patches(
             X_train, patch_size=patch_size, max_threads=MAX_THREADS, seed=seed, tot_patches=TOT_PATCHES)
-        all_patches = utils.normalize_patches(
+
+        np.save('all_patches.npy', all_patches)
+        all_patches, global_zca = utils.normalize_patches(
             all_patches, zca_bias=filter_scale)
+
+        np.save('global_zca.npy', global_zca)
+        np.save('all_patches_zca.npy', all_patches)
+        print(global_zca.shape)
         idxs = np.random.choice(
             all_patches.shape[0], num_filters, replace=False)
         filters = all_patches[idxs].astype(dtype)
@@ -67,6 +73,7 @@ def featurize(dataset, patch_size, patch_distribution, num_filters, pool_size, p
         X_test = X_test.astype(dtype)
         X_train /= 255.0
         X_test /= 255.0
+
     X_train_lift = coatesng.coatesng_featurize(
         featurizer, X_train.astype(dtype), data_batchsize=data_batchsize, gpu=gpu)
     X_test_lift = coatesng.coatesng_featurize(
@@ -109,10 +116,10 @@ if __name__ == "__main__":
         'generate a convolutional random features model')
     parser.add_argument('--num_filters', default=16, type=int)
     parser.add_argument('--dataset', help="cifar-10 or mnist (default cifar-10)", default='cifar-10')
-    parser.add_argument('--patch_size', type=int, default=6)
+    parser.add_argument('--patch_size', type=int, default=3)
     parser.add_argument('--subset', type=int, default=50000)
-    parser.add_argument('--pool_size', type=int, default=15)
-    parser.add_argument('--pool_stride', type=int, default=6)
+    parser.add_argument('--pool_size', type=int, default=32)
+    parser.add_argument('--pool_stride', type=int, default=32)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--bias', type=float, default=1.0)
     parser.add_argument('--filter_scale', type=float, default=1e-3)
@@ -125,9 +132,12 @@ if __name__ == "__main__":
 
     X_train_lift, X_test_lift, y_train, y_test, featurizer = featurize(args.dataset, args.patch_size, args.patch_distribution, args.num_filters, args.pool_size, args.pool_stride, args.bias, args.filter_scale, args.seed, data_batchsize=args.batch_size, zca=args.zca)
 
+    print(X_train_lift.shape)
+    print(X_test_lift.shape)
     X_train_lift = X_train_lift[:args.subset]
     y_train = y_train[:args.subset]
 
+    #exit()
     for reg in [1e-8, 1e-4, 1e-2,1,10,100,1000,10000]:
         print("regularization: ", reg)
         if X_train_lift.shape[0] > X_train_lift.shape[1]:
