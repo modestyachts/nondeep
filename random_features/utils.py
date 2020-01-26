@@ -238,7 +238,7 @@ def normalize_patches(patches, min_divisor=1e-8, zca_bias=0.001, mean_rgb=np.arr
     global_ZCA = V.dot(inv_sqrt_zca_eigs).dot(V.T)
     patches_normalized = (patches).dot(global_ZCA).dot(global_ZCA.T)
 
-    return patches_normalized.reshape(orig_shape).astype('float32')
+    return patches_normalized.reshape(orig_shape).astype('float32'), global_ZCA
 
 def preprocess(train, test, min_divisor=1e-8, zca_bias=0.0001, return_weights=False):
     origTrainShape = train.shape
